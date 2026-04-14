@@ -1,0 +1,31 @@
+[project]
+name = "items-subgraph"
+version = "1.0.0"
+readme = "README.md"
+
+requires-python = ">=3.14"
+dependencies = [
+    "aiorwlock>=1.5.1",
+    "cachetools==7.0.5",
+    "email-validator>=2.3.0",
+    "fastapi~=0.135.1",
+    "httpx==0.28.1",
+    "pydantic>=2.12.5,<3.0.0",
+    "pymongo==4.16.0",
+    "strawberry-graphql[cli]==0.313.0",
+    "uvicorn==0.42.0",
+]
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+
+[tool.ruff.lint]
+# line too long, unsorted imports, unused imports
+extend-select = ["E501", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
