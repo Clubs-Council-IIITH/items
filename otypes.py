@@ -52,11 +52,13 @@ class SimpleItemType:
     id: strawberry.auto
     iid: strawberry.auto
     name: strawberry.auto
+    brand: strawberry.auto
     clubid: strawberry.auto
     net_qty: strawberry.auto
     available_qty: strawberry.auto
     total_qty: strawberry.auto
     current_location: strawberry.auto
+
 
 
 @strawberry.experimental.pydantic.type(model=Item)
@@ -97,3 +99,4 @@ class ItemQtyInput:
     iid: str
     net_qty: int
     available_qty: int
+    total_qty: int | None = None

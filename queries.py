@@ -11,10 +11,15 @@ async def getItems(
     """
     Query to retrieve items.
     Allows optional filtering by clubid and limiting the number of items returned.
+    Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
     if user is None:
         raise Exception("Not Authenticated")
+
+    role = user.get("role")
+    if role not in ["club", "cc", "slo"]:
+        raise Exception("Not Authorized")
 
     query = {}
     if clubid:
@@ -27,10 +32,15 @@ async def getItems(
 async def getItem(info: Info, iid: str) -> FullItemType:
     """
     Query to retrieve full details of an item by iid.
+    Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
     if user is None:
         raise Exception("Not Authenticated")
+
+    role = user.get("role")
+    if role not in ["club", "cc", "slo"]:
+        raise Exception("Not Authorized")
 
     result = await itemsdb.find_one({"iid": iid})
     if not result:
@@ -42,10 +52,15 @@ async def getItem(info: Info, iid: str) -> FullItemType:
 async def checkAvailability(info: Info, iid: str, borrow_qty: int) -> bool:
     """
     Query to check if an item has enough available quantity for the requested borrow quantity.
+    Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
     if user is None:
         raise Exception("Not Authenticated")
+
+    role = user.get("role")
+    if role not in ["club", "cc", "slo"]:
+        raise Exception("Not Authorized")
 
     result = await itemsdb.find_one({"iid": iid})
     if not result:
@@ -55,4 +70,6 @@ async def checkAvailability(info: Info, iid: str, borrow_qty: int) -> bool:
     return available_qty >= borrow_qty
 
 
+
 queries = [getItems, getItem, checkAvailability]
+

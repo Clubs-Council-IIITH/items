@@ -75,7 +75,7 @@ class Item(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     brand: str = Field(..., min_length=1, max_length=50)
     photo: str | None = Field(None, description="Item Photo for Identifictation")
-    clubid: str | None 
+    clubid: str | None = Field("vamsi.krishna", description="Owner club ID. Defaults to 'slo'.")
     net_qty: int = Field(..., ge=0)
     available_qty: int = Field(..., ge=0)
     total_qty: int = Field(..., ge=0)
