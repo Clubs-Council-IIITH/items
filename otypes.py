@@ -68,6 +68,7 @@ class FullItemType:
     name: strawberry.auto
     brand: strawberry.auto
     photo: strawberry.auto
+    invoice: strawberry.auto
     clubid: strawberry.auto
     net_qty: strawberry.auto
     available_qty: strawberry.auto
@@ -91,6 +92,7 @@ class FullItemInput:
     warranty_details: strawberry.auto
     other_details: strawberry.auto
     current_location: strawberry.auto
+    invoice: strawberry.auto
     requires_approval: bool = True
 
 
