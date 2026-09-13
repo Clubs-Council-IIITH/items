@@ -24,10 +24,10 @@ from strawberry.tools import create_type
 # override PyObjectId and Context scalars
 from db import ensure_items_index
 from models import PyObjectId
-from otypes import Context, PyObjectIdType
 
 # import all queries and mutations
 from mutations import mutations
+from otypes import Context, PyObjectIdType
 from queries import queries
 
 # create query types

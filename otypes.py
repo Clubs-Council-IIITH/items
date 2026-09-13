@@ -4,14 +4,13 @@ Types and Inputs for items subgraph
 
 import json
 from functools import cached_property
-from typing import Dict, Union
 
 import strawberry
 from strawberry.fastapi import BaseContext
 from strawberry.types import Info as _Info
 from strawberry.types.info import RootValueType
 
-from models import PyObjectId, Item
+from models import Item, PyObjectId
 
 
 # custom context class
@@ -22,7 +21,7 @@ class Context(BaseContext):
     """
 
     @cached_property
-    def user(self) -> Union[Dict, None]:
+    def user(self) -> dict | None:
         if not self.request:
             return None
 
@@ -30,7 +29,7 @@ class Context(BaseContext):
         return user
 
     @cached_property
-    def cookies(self) -> Union[Dict, None]:
+    def cookies(self) -> dict | None:
         if not self.request:
             return None
 
@@ -58,7 +57,6 @@ class SimpleItemType:
     available_qty: strawberry.auto
     total_qty: strawberry.auto
     current_location: strawberry.auto
-
 
 
 @strawberry.experimental.pydantic.type(model=Item)
