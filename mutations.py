@@ -2,10 +2,17 @@ from datetime import datetime, timezone
 
 import strawberry
 from fastapi.encoders import jsonable_encoder
-from typing import List
-from models import Item
-from otypes import Info, FullItemInput, ItemQtyInput, FullItemType, SimpleItemType
+from graphql import GraphQLError
+
 from db import itemsdb, transactionsdb
+from models import Item
+from otypes import (
+    FullItemInput,
+    FullItemType,
+    Info,
+    ItemQtyInput,
+    SimpleItemType,
+)
 
 ACTIVE_TRANSACTION_STATES = [
     "incomplete",
@@ -23,27 +30,29 @@ async def addItem(itemInput: FullItemInput, info: Info) -> FullItemType:
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     item_input = jsonable_encoder(itemInput.to_pydantic())
     if not item_input.get("clubid"):
         item_input["clubid"] = "slo"
 
-    if item_input.get("total_qty") == 1 and len(item_input.get("current_location", [])) != 1:
-        raise Exception("If total_qty is 1, current_location must have exactly 1 item")
+    if (
+        item_input.get("total_qty") == 1
+        and len(item_input.get("current_location", [])) != 1
+    ):
+        raise GraphQLError(
+            "If total_qty is 1, current_location must have exactly 1 item"
+        )
 
-    existing = await itemsdb.find_one({
-        "$or": [
-            {"iid": item_input["iid"]},
-            {"name": item_input.get("name")}
-        ]
-    })
+    existing = await itemsdb.find_one(
+        {"$or": [{"iid": item_input["iid"]}, {"name": item_input.get("name")}]}
+    )
     if existing:
-        raise Exception("Item with this iid or name already exists")
+        raise GraphQLError("Item with this iid or name already exists")
 
     created_record = await itemsdb.insert_one(item_input)
     created_sample = Item.model_validate(
@@ -59,20 +68,25 @@ async def editItem(itemInput: FullItemInput, info: Info) -> FullItemType:
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     item_input = jsonable_encoder(itemInput.to_pydantic())
 
     existing = await itemsdb.find_one({"iid": item_input["iid"]})
     if not existing:
-        raise Exception("Item doesn't exist")
+        raise GraphQLError("Item doesn't exist")
 
-    if item_input.get("total_qty") == 1 and len(item_input.get("current_location", [])) != 1:
-        raise Exception("If total_qty is 1, current_location must have exactly 1 item")
+    if (
+        item_input.get("total_qty") == 1
+        and len(item_input.get("current_location", [])) != 1
+    ):
+        raise GraphQLError(
+            "If total_qty is 1, current_location must have exactly 1 item"
+        )
 
     item_input["_id"] = existing["_id"]
     await itemsdb.replace_one({"iid": item_input["iid"]}, item_input)
@@ -84,25 +98,27 @@ async def editItem(itemInput: FullItemInput, info: Info) -> FullItemType:
 
 
 @strawberry.mutation
-async def editItemQty(itemQtyInputs: List[ItemQtyInput], info: Info) -> List[SimpleItemType]:
+async def editItemQty(
+    itemQtyInputs: list[ItemQtyInput], info: Info
+) -> list[SimpleItemType]:
     """
     Directly change item quantities. Accessible to 'cc' and 'slo'.
     Accepts a list of ItemQtyInput and returns a list of updated items.
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     updated_items = []
 
     for input_data in itemQtyInputs:
         existing = await itemsdb.find_one({"iid": input_data.iid})
         if not existing:
-            raise Exception(f"Item {input_data.iid} doesn't exist")
+            raise GraphQLError(f"Item {input_data.iid} doesn't exist")
 
         set_fields = {
             "net_qty": input_data.net_qty,
@@ -111,10 +127,7 @@ async def editItemQty(itemQtyInputs: List[ItemQtyInput], info: Info) -> List[Sim
         if input_data.total_qty is not None:
             set_fields["total_qty"] = input_data.total_qty
 
-        await itemsdb.update_one(
-            {"iid": input_data.iid},
-            {"$set": set_fields}
-        )
+        await itemsdb.update_one({"iid": input_data.iid}, {"$set": set_fields})
 
         updated_sample = Item.model_validate(
             await itemsdb.find_one({"iid": input_data.iid})
@@ -125,7 +138,9 @@ async def editItemQty(itemQtyInputs: List[ItemQtyInput], info: Info) -> List[Sim
 
 
 @strawberry.mutation
-async def adjustAvailableQty(iid: str, delta: int, info: Info) -> SimpleItemType:
+async def adjustAvailableQty(
+    iid: str, delta: int, info: Info
+) -> SimpleItemType:
     """
     Atomically increment or decrement available_qty for a single item.
     Pass delta=+1 or delta=-1. Result is clamped to [0, net_qty].
@@ -133,18 +148,18 @@ async def adjustAvailableQty(iid: str, delta: int, info: Info) -> SimpleItemType
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     if delta == 0:
-        raise Exception("delta must be non-zero")
+        raise GraphQLError("delta must be non-zero")
 
     existing = await itemsdb.find_one({"iid": iid})
     if not existing:
-        raise Exception(f"Item {iid} doesn't exist")
+        raise GraphQLError(f"Item {iid} doesn't exist")
 
     current_avail = existing.get("available_qty", 0)
     net = existing.get("net_qty", 0)
@@ -170,18 +185,18 @@ async def deleteItem(iid: str, info: Info) -> FullItemType:
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     uid = user.get("uid", "")
     if role != "slo":
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     existing = await itemsdb.find_one({"iid": iid})
     if not existing:
-        raise Exception(f"Item {iid} doesn't exist")
+        raise GraphQLError(f"Item {iid} doesn't exist")
     if existing.get("is_deleted"):
-        raise Exception(f"Item {iid} is already deleted")
+        raise GraphQLError(f"Item {iid} is already deleted")
 
     await itemsdb.update_one({"iid": iid}, {"$set": {"is_deleted": True}})
 
@@ -201,4 +216,3 @@ async def deleteItem(iid: str, info: Info) -> FullItemType:
 
 
 mutations = [addItem, editItem, editItemQty, adjustAvailableQty, deleteItem]
-

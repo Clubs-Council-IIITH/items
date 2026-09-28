@@ -21,6 +21,7 @@ Attributes:
 from os import getenv
 
 from pymongo import AsyncMongoClient
+from pymongo.errors import PyMongoError
 
 # get mongodb URI and database name from environment variale
 MONGO_URI = "mongodb://{}:{}@mongo:{}/".format(
@@ -50,5 +51,5 @@ async def ensure_items_index():
             )
             print("The items index was created.")
         print(await itemsdb.index_information())
-    except Exception:
-        pass
+    except PyMongoError as e:
+        print(f"Warning: could not ensure items index: {e}")

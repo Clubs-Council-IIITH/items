@@ -1,29 +1,32 @@
 import strawberry
-from typing import List, Optional
-from models import Item
-from otypes import Info, SimpleItemType, FullItemType
+from graphql import GraphQLError
+
 from db import itemsdb
+from models import Item
+from otypes import FullItemType, Info, SimpleItemType
+
 
 @strawberry.field
 async def getItems(
     info: Info,
-    clubid: Optional[str] = None,
-    limit: Optional[int] = None,
+    clubid: str | None = None,
+    limit: int | None = None,
     hideDeleted: bool = True,
-) -> List[SimpleItemType]:
+) -> list[SimpleItemType]:
     """
     Query to retrieve items.
-    Allows optional filtering by clubid and limiting the number of items returned.
+    Allows optional filtering by clubid and limiting the number of items
+    returned.
     Deleted items are excluded unless hideDeleted is set to False.
     Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["club", "cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     query = {}
     if clubid:
@@ -32,7 +35,11 @@ async def getItems(
         query["is_deleted"] = {"$ne": True}
 
     results = await itemsdb.find(query).to_list(length=limit)
-    return [SimpleItemType.from_pydantic(Item.model_validate(result)) for result in results]
+    return [
+        SimpleItemType.from_pydantic(Item.model_validate(result))
+        for result in results
+    ]
+
 
 @strawberry.field
 async def getItem(info: Info, iid: str) -> FullItemType:
@@ -42,40 +49,39 @@ async def getItem(info: Info, iid: str) -> FullItemType:
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["club", "cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     result = await itemsdb.find_one({"iid": iid})
     if not result:
-        raise Exception("Item not found")
+        raise GraphQLError("Item not found")
     return FullItemType.from_pydantic(Item.model_validate(result))
 
 
 @strawberry.field
 async def checkAvailability(info: Info, iid: str, borrow_qty: int) -> bool:
     """
-    Query to check if an item has enough available quantity for the requested borrow quantity.
+    Query to check if an item has enough available quantity for the requested
+    borrow quantity.
     Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
     if user is None:
-        raise Exception("Not Authenticated")
+        raise GraphQLError("Not Authenticated")
 
     role = user.get("role")
     if role not in ["club", "cc", "slo"]:
-        raise Exception("Not Authorized")
+        raise GraphQLError("Not Authorized")
 
     result = await itemsdb.find_one({"iid": iid})
     if not result:
-        raise Exception("Item not found")
+        raise GraphQLError("Item not found")
 
     available_qty = result.get("available_qty", 0)
     return available_qty >= borrow_qty
 
 
-
 queries = [getItems, getItem, checkAvailability]
-
