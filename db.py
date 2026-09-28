@@ -36,6 +36,7 @@ client = AsyncMongoClient(MONGO_URI)
 # get database
 db = client[MONGO_DATABASE]
 itemsdb = db.items
+transactionsdb = db.transactions
 
 
 async def ensure_items_index():

@@ -58,6 +58,7 @@ class SimpleItemType:
     available_qty: strawberry.auto
     total_qty: strawberry.auto
     current_location: strawberry.auto
+    is_deleted: strawberry.auto
 
 
 
@@ -77,6 +78,7 @@ class FullItemType:
     other_details: strawberry.auto
     current_location: strawberry.auto
     requires_approval: strawberry.auto
+    is_deleted: strawberry.auto
 
 
 @strawberry.experimental.pydantic.input(model=Item)

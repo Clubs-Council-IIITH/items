@@ -66,9 +66,10 @@ class Item(BaseModel):
         warranty_details (str | None): Optional attribute for warranty details
                                        like warranty id, or other info.
         other_details (str | None): Other details to the Item
-        current_location (List[mtypes.Storage_Location]): Current location of 
+        current_location (List[mtypes.Storage_Location]): Current location of
                                        the item.
         requires_approval (bool): Whether the item requires approval for a borrow
+        is_deleted (bool): Soft-delete flag. Defaults to False.
     """
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     iid: str = Field(..., description="Item ID")
@@ -84,6 +85,7 @@ class Item(BaseModel):
     other_details: str | None = Field(..., description="Other Item details")
     current_location: List[Storage_Location]
     requires_approval: bool
+    is_deleted: bool = False
 
     model_config = ConfigDict(
         populate_by_name=True,

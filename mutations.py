@@ -1,9 +1,20 @@
+from datetime import datetime, timezone
+
 import strawberry
 from fastapi.encoders import jsonable_encoder
 from typing import List
 from models import Item
 from otypes import Info, FullItemInput, ItemQtyInput, FullItemType, SimpleItemType
-from db import itemsdb
+from db import itemsdb, transactionsdb
+
+ACTIVE_TRANSACTION_STATES = [
+    "incomplete",
+    "pending",
+    "pending_club",
+    "pending_slo",
+    "approved_slo",
+    "borrowed",
+]
 
 @strawberry.mutation
 async def addItem(itemInput: FullItemInput, info: Info) -> FullItemType:
@@ -149,5 +160,45 @@ async def adjustAvailableQty(iid: str, delta: int, info: Info) -> SimpleItemType
     return SimpleItemType.from_pydantic(updated)
 
 
-mutations = [addItem, editItem, editItemQty, adjustAvailableQty]
+@strawberry.mutation
+async def deleteItem(iid: str, info: Info) -> FullItemType:
+    """
+    Soft-delete an item (sets is_deleted to True).
+    Cascades: any of its transactions that are still in an active
+    (non-terminal) state are force-moved to 'deleted' too.
+    Only accessible to the 'slo' role.
+    """
+    user = info.context.user
+    if user is None:
+        raise Exception("Not Authenticated")
+
+    role = user.get("role")
+    uid = user.get("uid", "")
+    if role != "slo":
+        raise Exception("Not Authorized")
+
+    existing = await itemsdb.find_one({"iid": iid})
+    if not existing:
+        raise Exception(f"Item {iid} doesn't exist")
+    if existing.get("is_deleted"):
+        raise Exception(f"Item {iid} is already deleted")
+
+    await itemsdb.update_one({"iid": iid}, {"$set": {"is_deleted": True}})
+
+    await transactionsdb.update_many(
+        {"itemid": iid, "status.state": {"$in": ACTIVE_TRANSACTION_STATES}},
+        {
+            "$set": {
+                "status.state": "deleted",
+                "status.lastUpdatedTime": datetime.now(timezone.utc),
+                "status.lastUpdatedBy": uid,
+            }
+        },
+    )
+
+    updated = Item.model_validate(await itemsdb.find_one({"iid": iid}))
+    return FullItemType.from_pydantic(updated)
+
+
+mutations = [addItem, editItem, editItemQty, adjustAvailableQty, deleteItem]
 

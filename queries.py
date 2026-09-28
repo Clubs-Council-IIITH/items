@@ -6,11 +6,15 @@ from db import itemsdb
 
 @strawberry.field
 async def getItems(
-    info: Info, clubid: Optional[str] = None, limit: Optional[int] = None
+    info: Info,
+    clubid: Optional[str] = None,
+    limit: Optional[int] = None,
+    hideDeleted: bool = True,
 ) -> List[SimpleItemType]:
     """
     Query to retrieve items.
     Allows optional filtering by clubid and limiting the number of items returned.
+    Deleted items are excluded unless hideDeleted is set to False.
     Only accessible to 'club', 'cc', and 'slo' roles.
     """
     user = info.context.user
@@ -24,6 +28,8 @@ async def getItems(
     query = {}
     if clubid:
         query["clubid"] = clubid
+    if hideDeleted:
+        query["is_deleted"] = {"$ne": True}
 
     results = await itemsdb.find(query).to_list(length=limit)
     return [SimpleItemType.from_pydantic(Item.model_validate(result)) for result in results]
